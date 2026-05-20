@@ -34,6 +34,7 @@ html.dark {
 
 html {
   background-color: var(--bg-primary);
+  overflow-x: hidden;
 }
 
 body {
@@ -42,6 +43,8 @@ body {
   color: var(--text-primary);
   line-height: 1.6;
   min-height: 100vh;
+  overflow-x: hidden;
+  max-width: 100%;
 }
 
 /* View Transitions for left-to-right theme wipe */
@@ -236,6 +239,7 @@ a:hover {
   .grid-layout {
     display: flex !important;
     flex-direction: column !important;
+    align-items: stretch !important;
   }
   .sidebar-column, .main-column {
     display: contents !important;
@@ -275,14 +279,33 @@ a:hover {
 
   /* Stretch Connect cards edge-to-edge on mobile */
   .sec-socials .sidebar-grid {
+    width: auto !important;
     margin-left: -2rem !important;
     margin-right: -2rem !important;
     gap: 0 !important;
   }
   .sec-socials .block-card {
-    border-bottom: 1px solid var(--border-color) !important;
+    border-bottom: none !important;
+    position: relative !important;
     padding-left: 1.5rem !important;
     padding-right: 1.5rem !important;
+  }
+  .sec-socials .block-card::after {
+    content: '' !important;
+    position: absolute !important;
+    bottom: 0 !important;
+    height: 1px !important;
+    background-color: var(--border-color) !important;
+  }
+  /* Left column: bottom line stops 2rem before the left screen edge */
+  .sec-socials .block-card:nth-child(odd)::after {
+    left: 2rem !important;
+    right: 0 !important;
+  }
+  /* Right column: bottom line stops 2rem before the right screen edge */
+  .sec-socials .block-card:nth-child(even)::after {
+    left: 0 !important;
+    right: 2rem !important;
   }
   .sec-socials .block-card:nth-child(odd) {
     border-right: 1px solid var(--border-color) !important;
@@ -1127,28 +1150,28 @@ a:hover {
     letter-spacing: 0.02em !important;
   }
 
-  /* Two Buttons on Same Line */
+  /* Two Buttons on Same Line, wrapping beautifully if there are three */
   .header-buttons-container {
     display: flex !important;
-    flex-wrap: nowrap !important;
-    gap: 0.4rem !important;
+    flex-wrap: wrap !important;
+    gap: 0.5rem !important;
     width: 100% !important;
   }
   .header-buttons-container > a,
   .header-buttons-container > button {
-    flex: 1 1 0 !important;
-    min-width: 0 !important;
-    padding: 0.5rem 0.25rem !important;
-    font-size: 0.64rem !important;
+    flex: 1 1 calc(50% - 0.25rem) !important;
+    min-width: 120px !important;
+    padding: 0.55rem 0.5rem !important;
+    font-size: 0.75rem !important;
     justify-content: center !important;
     text-align: center !important;
     white-space: nowrap !important;
     letter-spacing: 0.02em !important;
-    gap: 0.2rem !important;
+    gap: 0.35rem !important;
   }
   .header-buttons-container svg {
-    width: 10px !important;
-    height: 10px !important;
+    width: 12px !important;
+    height: 12px !important;
     flex-shrink: 0 !important;
   }
 
