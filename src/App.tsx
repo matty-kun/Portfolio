@@ -88,6 +88,17 @@ const getContactIcon = (method: string, size = '16px') => {
     );
   }
   
+  if (cleanMethod === 'discord') {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: '0.45rem', flexShrink: 0 }}>
+        <path d="M15 6H9c-2.3 0-4 1.7-4 4v4c0 2.3 1.7 4 4 4h6c2.3 0 4-1.7 4-4v-4c0-2.3-1.7-4-4-4Z"/>
+        <circle cx="10" cy="12" r="1" fill="currentColor" stroke="none" />
+        <circle cx="14" cy="12" r="1" fill="currentColor" stroke="none" />
+        <path d="M10 15c.5.3 1.2.5 2 .5s1.5-.2 2-.5"/>
+      </svg>
+    );
+  }
+  
   return null;
 };
 
@@ -215,7 +226,25 @@ function App() {
   const [selectedCertIndex, setSelectedCertIndex] = useState<number>(0);
   const [isHoveredProfile, setIsHoveredProfile] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState('/avatar.png');
+  const [isHoveredGallery, setIsHoveredGallery] = useState(false);
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+
+  const handleProfileClick = () => {
+    // Only cycle via clicks if on a touch device
+    if (!window.matchMedia('(pointer: coarse)').matches) return;
+    
+    if (!isHoveredProfile) {
+      // Step 1: Main Photo -> Standard Avatar
+      setIsHoveredProfile(true);
+      setAvatarUrl('/avatar.png');
+    } else if (avatarUrl === '/avatar.png') {
+      // Step 2: Standard Avatar -> Pixelated Avatar
+      setAvatarUrl('/pixelated avatar.png');
+    } else {
+      // Step 3: Pixelated Avatar -> Main Photo
+      setIsHoveredProfile(false);
+    }
+  };
   const [isSubmittedSuccess, setIsSubmittedSuccess] = useState(false);
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -225,11 +254,13 @@ function App() {
   const [submittedProjects, setSubmittedProjects] = useState<any[]>([]);
   const [expandedHistory, setExpandedHistory] = useState<Set<string>>(new Set());
   const [inquiryEmail, setInquiryEmail] = useState('');
-  const [inquiryBusiness, setInquiryBusiness] = useState('SaaS / Tech Startup');
-  const [inquiryType, setInquiryType] = useState('Web Application');
-  const [inquiryTeamSize, setInquiryTeamSize] = useState('1 (Just Me)');
-  const [inquiryBudget, setInquiryBudget] = useState('₱50k - ₱100k');
-  const [inquiryContactMethod, setInquiryContactMethod] = useState('Email');
+  const [formStep, setFormStep] = useState(1);
+  const [emailError, setEmailError] = useState('');
+  const [inquiryBusiness, setInquiryBusiness] = useState('');
+  const [inquiryType, setInquiryType] = useState('');
+  const [inquiryTeamSize, setInquiryTeamSize] = useState('');
+  const [inquiryBudget, setInquiryBudget] = useState('');
+  const [inquiryContactMethod, setInquiryContactMethod] = useState('');
   const galleryRef = useRef<HTMLDivElement>(null);
   const cursorDotRef = useRef<HTMLDivElement>(null);
   const cursorRingRef = useRef<HTMLDivElement>(null);
@@ -431,11 +462,15 @@ function App() {
     if (galleryRef.current) {
       const el = galleryRef.current;
       const scrollAmount = 300;
+      const maxScrollLeft = el.scrollWidth - el.clientWidth;
+      
+      if (maxScrollLeft <= 0) return; // No scroll needed if content fits
       
       if (direction === 'left') {
-        if (el.scrollLeft <= 5) {
+        // If already at or near the start (within 10px), wrap to the end
+        if (el.scrollLeft <= 10) {
           el.scrollTo({
-            left: el.scrollWidth - el.clientWidth,
+            left: maxScrollLeft,
             behavior: 'smooth'
           });
         } else {
@@ -445,7 +480,8 @@ function App() {
           });
         }
       } else {
-        if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 5) {
+        // If already at or near the end (within 15px), wrap to the start
+        if (el.scrollLeft >= maxScrollLeft - 15) {
           el.scrollTo({
             left: 0,
             behavior: 'smooth'
@@ -459,6 +495,21 @@ function App() {
       }
     }
   };
+
+  const scrollGalleryRef = useRef(scrollGallery);
+  useEffect(() => {
+    scrollGalleryRef.current = scrollGallery;
+  });
+
+  useEffect(() => {
+    if (isHoveredGallery || !resumeData || !resumeData.gallery || resumeData.gallery.length === 0) return;
+
+    const interval = setInterval(() => {
+      scrollGalleryRef.current('right');
+    }, 3500);
+
+    return () => clearInterval(interval);
+  }, [isHoveredGallery, resumeData]);
 
   const selectCertificate = (index: number) => {
     safeStartViewTransition(() => {
@@ -488,6 +539,65 @@ function App() {
 
   const saveProjectHistory = (id: string, history: any[]) => {
     localStorage.setItem(`brief_history_${id}`, JSON.stringify(history));
+  };
+
+  const isNextDisabled = () => {
+    if (formStep === 1) return !inquiryBusiness;
+    if (formStep === 2) return !inquiryType;
+    if (formStep === 3) return !inquiryTeamSize;
+    if (formStep === 4) return !inquiryBudget;
+    if (formStep === 5) return !inquiryContactMethod;
+    return false;
+  };
+
+  const handleCloseModal = () => {
+    setIsProjectModalOpen(false);
+    setIsSubmittedSuccess(false);
+    setFormStep(1);
+    setEmailError('');
+    setInquiryEmail('');
+    setInquiryBusiness('');
+    setInquiryType('');
+    setInquiryTeamSize('');
+    setInquiryBudget('');
+    setInquiryContactMethod('');
+  };
+
+  const handleNextStep = () => {
+    if (isNextDisabled()) return;
+    setFormStep(prev => Math.min(prev + 1, 6));
+  };
+
+  const handlePrevStep = () => {
+    setFormStep(prev => Math.max(prev - 1, 1));
+  };
+
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (formStep < 6) {
+      handleNextStep();
+    } else {
+      if (!inquiryEmail) {
+        setEmailError('Please enter your email address.');
+        return;
+      }
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(inquiryEmail)) {
+        setEmailError('Please enter a valid email address.');
+        return;
+      }
+      setEmailError('');
+      handleInquirySubmit(e);
+    }
+  };
+
+
+
+  const selectOptionAndAdvance = (setter: (val: string) => void, val: string) => {
+    setter(val);
+    setTimeout(() => {
+      setFormStep(prev => Math.min(prev + 1, 6));
+    }, 220);
   };
 
   const handleInquirySubmit = (e: React.FormEvent) => {
@@ -534,9 +644,12 @@ function App() {
     
     // Reset form
     setInquiryEmail('');
-    setInquiryBusiness('SaaS / Tech Startup');
-    setInquiryTeamSize('1 (Just Me)');
-    setInquiryContactMethod('Email');
+    setInquiryBusiness('');
+    setInquiryType('');
+    setInquiryTeamSize('');
+    setInquiryBudget('');
+    setInquiryContactMethod('');
+    setFormStep(1);
   };
 
   const handleClientDelete = (id: string) => {
@@ -987,8 +1100,10 @@ function App() {
         {/* Header */}
       <header className="header">
         <div 
-          style={{ width: '135px', height: '135px', flexShrink: 0, position: 'relative', overflow: 'hidden', borderRadius: '0', border: 'none' }}
+          className="profile-image-container"
+          style={{ flexShrink: 0, position: 'relative', overflow: 'hidden', borderRadius: '0', border: 'none' }}
           onMouseEnter={() => {
+            if (window.matchMedia('(pointer: coarse)').matches) return;
             setIsHoveredProfile(true);
             const options = [
               '/avatar.png',
@@ -1000,7 +1115,11 @@ function App() {
             }
             setAvatarUrl(nextOption);
           }}
-          onMouseLeave={() => setIsHoveredProfile(false)}
+          onMouseLeave={() => {
+            if (window.matchMedia('(pointer: coarse)').matches) return;
+            setIsHoveredProfile(false);
+          }}
+          onClick={handleProfileClick}
         >
           <img 
             src={heroImg} 
@@ -1456,7 +1575,17 @@ function App() {
       {resumeData.gallery && resumeData.gallery.length > 0 && (
         <section className="section sec-gallery">
           <h3 className="section-title">Gallery</h3>
-          <div className="gallery-wrapper">
+          <div 
+            className="gallery-wrapper"
+            onMouseEnter={() => {
+              if (window.matchMedia('(pointer: coarse)').matches) return;
+              setIsHoveredGallery(true);
+            }}
+            onMouseLeave={() => {
+              if (window.matchMedia('(pointer: coarse)').matches) return;
+              setIsHoveredGallery(false);
+            }}
+          >
             <button className="gallery-arrow left" onClick={() => scrollGallery('left')} aria-label="Scroll Left">
               &#8592;
             </button>
@@ -1483,9 +1612,9 @@ function App() {
 
       {/* Start a Project Modal */}
       {isProjectModalOpen && (
-        <div className="modal-overlay" onClick={() => { setIsProjectModalOpen(false); setIsSubmittedSuccess(false); }}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: isSubmittedSuccess ? '400px' : '640px', transition: 'all 0.3s ease' }}>
-            <button className="modal-close-btn" onClick={() => { setIsProjectModalOpen(false); setIsSubmittedSuccess(false); }} aria-label="Close modal">
+        <div className="modal-overlay" onClick={handleCloseModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: isSubmittedSuccess ? '400px' : '580px', transition: 'all 0.3s ease' }}>
+            <button className="modal-close-btn" onClick={handleCloseModal} aria-label="Close modal">
               &times;
             </button>
             {isSubmittedSuccess ? (
@@ -1503,8 +1632,7 @@ function App() {
                     className="schedule-call-btn"
                     style={{ width: '100%', justifyContent: 'center', cursor: 'none', textDecoration: 'none' }}
                     onClick={() => {
-                      setIsProjectModalOpen(false);
-                      setIsSubmittedSuccess(false);
+                      handleCloseModal();
                       setIsDashboardOpen(true);
                     }}
                   >
@@ -1512,9 +1640,8 @@ function App() {
                   </a>
                   <button 
                     onClick={() => {
-                      setIsProjectModalOpen(false);
+                      handleCloseModal();
                       setIsDashboardOpen(true);
-                      setIsSubmittedSuccess(false);
                     }}
                     style={{ 
                       background: 'transparent', 
@@ -1534,116 +1661,329 @@ function App() {
             ) : (
               <>
                 <h4 className="modal-title">Start a Project</h4>
-                <form onSubmit={handleInquirySubmit} className="inquiry-form">
-                  <div className="form-group">
-                    <label htmlFor="client-email">Your Email</label>
-                    <input 
-                      type="email" 
-                      id="client-email" 
-                      className="form-input" 
-                      value={inquiryEmail} 
-                      onChange={(e) => setInquiryEmail(e.target.value)} 
-                      required 
-                      placeholder="e.g. john@example.com"
-                    />
+                
+                {/* Form Progress Indicator */}
+                <div className="form-progress-header" style={{ marginBottom: '1.75rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <span className="form-step-indicator" style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Step {formStep} of 6
+                    </span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                      {Math.round(((formStep - 1) / 5) * 100)}% Complete
+                    </span>
                   </div>
-                  <div className="form-group">
-                    <label htmlFor="client-business">Business or Organization Type</label>
-                    <CustomSelect 
-                      id="client-business"
-                      value={inquiryBusiness}
-                      onChange={setInquiryBusiness}
-                      options={[
-                        { value: 'Retail / Food & Beverage', label: '📦 Retail / Food & Beverage' },
-                        { value: 'Agency / Consulting', label: '🖥️ Agency / Consulting' },
-                        { value: 'SaaS / Tech Startup', label: '👾 SaaS / Tech Startup' },
-                        { value: 'E-Commerce', label: '📦 E-Commerce' },
-                        { value: 'Service-Based Business', label: '🕹️ Service-Based Business' },
-                        { value: 'Government / LGU', label: '🧱 Government / LGU' },
-                        { value: 'Individual / Freelancer', label: '💎 Individual / Freelancer' },
-                        { value: 'Other', label: '🧩 Other' }
-                      ]}
-                    />
+                  
+                  {/* Timeline Stepper (box --- box --- box) */}
+                  <div className="stepper-timeline-container" style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '0 4px', margin: '1.25rem 0' }}>
+                    {/* Connecting Line Track (Background) */}
+                    <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: '2px', background: 'var(--border-color)', transform: 'translateY(-50%)', zIndex: 1 }} />
+                    
+                    {/* Fill Active Line Track */}
+                    <div style={{ 
+                      position: 'absolute', 
+                      top: '50%', 
+                      left: 0, 
+                      width: `${((formStep - 1) / 5) * 100}%`, 
+                      height: '2px', 
+                      background: 'var(--accent)', 
+                      transform: 'translateY(-50%)', 
+                      transition: 'width 0.4s cubic-bezier(0.25, 1, 0.5, 1)',
+                      zIndex: 1 
+                    }} />
+
+                    {/* 6 Step Nodes */}
+                    {[1, 2, 3, 4, 5, 6].map((step) => {
+                      const isCompleted = step < formStep;
+                      const isActive = step === formStep;
+                      return (
+                        <div 
+                          key={step} 
+                          style={{ 
+                            width: '14px', 
+                            height: '14px', 
+                            background: isCompleted ? 'var(--accent)' : 'var(--bg-secondary)', 
+                            border: isCompleted || isActive ? '2px solid var(--accent)' : '2px solid var(--border-color)',
+                            zIndex: 2,
+                            transition: 'all 0.3s ease',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            position: 'relative',
+                            borderRadius: '0'
+                          }}
+                        >
+                          {isActive && (
+                            <div style={{ width: '6px', height: '6px', background: 'var(--accent)', borderRadius: '0' }} />
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
-                  <div className="form-row">
-                    <div className="form-group" style={{ flex: 1 }}>
-                      <label htmlFor="system-type">What do you want to make?</label>
-                      <CustomSelect
-                        id="system-type"
-                        value={inquiryType}
-                        onChange={setInquiryType}
-                        options={[
+                </div>
+
+                <form onSubmit={handleFormSubmit} className="inquiry-form">
+                  {/* Step 1: Business Type */}
+                  {formStep === 1 && (
+                    <div key="step1" className="form-step-content">
+                      <label htmlFor="client-business" style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Business or Organization Type
+                      </label>
+                      <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                        What kind of business or organization is this project for?
+                      </p>
+                      <div className="form-choice-grid">
+                        {[
+                          { value: 'Retail / Food & Beverage', label: '📦 Retail / Food & Beverage' },
+                          { value: 'Agency / Consulting', label: '🖥️ Agency / Consulting' },
+                          { value: 'SaaS / Tech Startup', label: '👾 SaaS / Tech Startup' },
+                          { value: 'E-Commerce', label: '📦 E-Commerce' },
+                          { value: 'Service-Based Business', label: '🕹️ Service-Based Business' },
+                          { value: 'Government / LGU', label: '🧱 Government / LGU' },
+                          { value: 'Individual / Freelancer', label: '💎 Individual / Freelancer' },
+                          { value: 'Other', label: '🧩 Other' }
+                        ].map((opt) => {
+                          const isSelected = inquiryBusiness === opt.value;
+                          return (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => selectOptionAndAdvance(setInquiryBusiness, opt.value)}
+                              className={`form-choice-card ${isSelected ? 'selected' : ''}`}
+                            >
+                              <span>{opt.label}</span>
+                              {isSelected && <div style={{ width: '6px', height: '6px', background: 'var(--accent)', borderRadius: '0' }} />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Step 2: What to Make */}
+                  {formStep === 2 && (
+                    <div key="step2" className="form-step-content">
+                      <label htmlFor="system-type" style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        What do you want to make?
+                      </label>
+                      <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                        Select the primary system or application category.
+                      </p>
+                      <div className="form-choice-grid">
+                        {[
                           { value: 'Website', label: '💾 Website' },
                           { value: 'Web App', label: '🖥️ Web App' },
                           { value: 'Mobile App', label: '📟 Mobile App' },
                           { value: 'Custom System / POS', label: '🕹️ Custom System / POS' },
                           { value: 'E-Governance (e-Gov)', label: '🧱 E-Governance (e-Gov)' },
                           { value: 'Other', label: '🧩 Other' }
-                        ]}
-                      />
+                        ].map((opt) => {
+                          const isSelected = inquiryType === opt.value;
+                          return (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => selectOptionAndAdvance(setInquiryType, opt.value)}
+                              className={`form-choice-card ${isSelected ? 'selected' : ''}`}
+                            >
+                              <span>{opt.label}</span>
+                              {isSelected && <div style={{ width: '6px', height: '6px', background: 'var(--accent)', borderRadius: '0' }} />}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
-                    <div className="form-group" style={{ flex: 1 }}>
-                      <label htmlFor="team-size">How big is the team?</label>
-                      <CustomSelect
-                        id="team-size"
-                        value={inquiryTeamSize}
-                        onChange={setInquiryTeamSize}
-                        options={[
+                  )}
+
+                  {/* Step 3: Team Size */}
+                  {formStep === 3 && (
+                    <div key="step3" className="form-step-content">
+                      <label htmlFor="team-size" style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        How big is the team?
+                      </label>
+                      <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                        This helps estimate operational capacity and user seats required.
+                      </p>
+                      <div className="form-choice-grid">
+                        {[
                           { value: '1 (Just Me)', label: '1 (Just Me)' },
                           { value: '2 - 5 people', label: '2 - 5 people' },
                           { value: '6 - 15 people', label: '6 - 15 people' },
                           { value: '16 - 50 people', label: '16 - 50 people' },
                           { value: '50+ people', label: '50+ people' }
-                        ]}
-                      />
+                        ].map((opt) => {
+                          const isSelected = inquiryTeamSize === opt.value;
+                          return (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => selectOptionAndAdvance(setInquiryTeamSize, opt.value)}
+                              className={`form-choice-card ${isSelected ? 'selected' : ''}`}
+                            >
+                              <span>{opt.label}</span>
+                              {isSelected && <div style={{ width: '6px', height: '6px', background: 'var(--accent)', borderRadius: '0' }} />}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                  <div className="form-row">
-                    <div className="form-group" style={{ flex: 1 }}>
-                      <label htmlFor="project-budget">Estimated Budget</label>
-                      <CustomSelect
-                        id="project-budget"
-                        value={inquiryBudget}
-                        onChange={setInquiryBudget}
-                        options={[
-                          { value: '< ₱50k', label: '< ₱50,000' },
+                  )}
+
+                  {/* Step 4: Estimated Budget */}
+                  {formStep === 4 && (
+                    <div key="step4" className="form-step-content">
+                      <label htmlFor="project-budget" style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Estimated Budget
+                      </label>
+                      <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                        Select a range that matches your planned project investment.
+                      </p>
+                      <div className="form-choice-grid">
+                        {[
+                          { value: '< ₱50k', label: '₱50k' },
                           { value: '₱50k - ₱100k', label: '₱50k - ₱100k' },
                           { value: '₱100k - ₱200k', label: '₱100k - ₱200k' },
                           { value: '₱200k+', label: '₱200k +' },
                           { value: 'Not Sure', label: 'Not Sure / Decided Later' }
-                        ]}
-                      />
+                        ].map((opt) => {
+                          const isSelected = inquiryBudget === opt.value;
+                          return (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => selectOptionAndAdvance(setInquiryBudget, opt.value)}
+                              className={`form-choice-card ${isSelected ? 'selected' : ''}`}
+                            >
+                              <span>{opt.label === '₱50k' ? '< ₱50,000' : opt.label}</span>
+                              {isSelected && <div style={{ width: '6px', height: '6px', background: 'var(--accent)', borderRadius: '0' }} />}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
-                    <div className="form-group" style={{ flex: 1 }}>
-                      <label htmlFor="contact-method">Preferred Communication</label>
-                      <CustomSelect
-                        id="contact-method"
-                        value={inquiryContactMethod}
-                        onChange={setInquiryContactMethod}
-                        options={[
+                  )}
+
+                  {/* Step 5: Preferred Communication */}
+                  {formStep === 5 && (
+                    <div key="step5" className="form-step-content">
+                      <label htmlFor="contact-method" style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Preferred Communication
+                      </label>
+                      <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                        How should Matthew reach out to you to discuss the details?
+                      </p>
+                      <div className="form-choice-grid">
+                        {[
                           { value: 'Email', label: 'Email' },
                           { value: 'Telegram', label: 'Telegram' },
+                          { value: 'Discord', label: 'Discord' },
                           { value: 'LinkedIn', label: 'LinkedIn' },
                           { value: 'Facebook', label: 'Facebook' },
                           { value: 'Instagram', label: 'Instagram' },
                           { value: 'WhatsApp', label: 'WhatsApp' }
-                        ]}
-                      />
+                        ].map((opt) => {
+                          const isSelected = inquiryContactMethod === opt.value;
+                          return (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => selectOptionAndAdvance(setInquiryContactMethod, opt.value)}
+                              className={`form-choice-card ${isSelected ? 'selected' : ''}`}
+                            >
+                              <span style={{ display: 'flex', alignItems: 'center' }}>
+                                {getContactIcon(opt.value)}
+                                <span style={{ marginLeft: '0.25rem' }}>{opt.label}</span>
+                              </span>
+                              {isSelected && <div style={{ width: '6px', height: '6px', background: 'var(--accent)', borderRadius: '0' }} />}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
+                  )}
+
+                  {/* Step 6: Email */}
+                  {formStep === 6 && (
+                    <div key="step6" className="form-step-content">
+                      <label htmlFor="client-email" style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Your Email
+                      </label>
+                      <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                        Let's finish up with how we can reach you. We will send a confirmation and access link here.
+                      </p>
+                      <input 
+                        type="email" 
+                        id="client-email" 
+                        className="form-input" 
+                        value={inquiryEmail} 
+                        onChange={(e) => {
+                          setInquiryEmail(e.target.value);
+                          if (emailError) setEmailError('');
+                        }} 
+                        required 
+                        placeholder="e.g. john@example.com"
+                        autoFocus
+                        style={{ padding: '0.75rem', fontSize: '0.95rem' }}
+                      />
+                      {emailError && (
+                        <span style={{ color: '#ff4d4d', fontSize: '0.8rem', marginTop: '0.25rem', display: 'block' }}>
+                          ⚠️ {emailError}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Navigation Buttons */}
+                  <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem' }}>
+                    {formStep > 1 && (
+                      <button 
+                        type="button" 
+                        onClick={handlePrevStep}
+                        className="schedule-call-btn" 
+                        style={{ 
+                          flex: 1, 
+                          justifyContent: 'center', 
+                          cursor: 'none',
+                          background: 'transparent',
+                          border: '1px solid var(--border-color)',
+                          color: 'var(--text-primary)'
+                        }}
+                      >
+                        &larr; Back
+                      </button>
+                    )}
+                    
+                    {formStep < 6 ? (
+                      <button 
+                        type="button" 
+                        onClick={handleNextStep}
+                        className="schedule-call-btn" 
+                        disabled={isNextDisabled()}
+                        style={{ 
+                          flex: 2, 
+                          justifyContent: 'center', 
+                          cursor: isNextDisabled() ? 'not-allowed' : 'none',
+                          opacity: isNextDisabled() ? 0.5 : 1
+                        }}
+                      >
+                        Next Step &rarr;
+                      </button>
+                    ) : (
+                      <button 
+                        type="submit" 
+                        className="schedule-call-btn" 
+                        style={{ flex: 2, justifyContent: 'center', cursor: 'none' }}
+                      >
+                        Submit Brief &rarr;
+                      </button>
+                    )}
                   </div>
-                  <button 
-                    type="submit" 
-                    className="schedule-call-btn" 
-                    style={{ width: '100%', justifyContent: 'center', marginTop: '0.5rem', cursor: 'none' }}
-                  >
-                    Submit &rarr;
-                  </button>
                 </form>
               </>
             )}
           </div>
         </div>
       )}
+
 
       {isDashboardOpen && (
         <div className="modal-overlay" onClick={() => setIsDashboardOpen(false)}>

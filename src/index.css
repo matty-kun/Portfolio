@@ -85,6 +85,11 @@ a:hover {
   margin-bottom: 2.5rem;
 }
 
+.profile-image-container {
+  width: 170px;
+  height: 170px;
+}
+
 .header-info h1 {
   font-size: 2.5rem;
   font-weight: 700;
@@ -557,7 +562,7 @@ a:hover {
 .gallery-img {
   height: 180px;
   min-width: 240px;
-  border-radius: 4px;
+  border-radius: 0;
   object-fit: cover;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   transition: transform 0.3s ease;
@@ -1128,6 +1133,10 @@ a:hover {
     align-items: center !important;
     text-align: center !important;
   }
+  .profile-image-container {
+    width: 110px !important;
+    height: 110px !important;
+  }
   .header-info {
     display: flex !important;
     flex-direction: column !important;
@@ -1195,4 +1204,81 @@ a:hover {
     font-size: 0.75rem !important;
   }
 }
+
+/* Step-by-Step Wizard Form Styles */
+@keyframes stepFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.form-step-content {
+  animation: stepFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.form-progress-header {
+  width: 100%;
+}
+
+.progress-bar-container {
+  overflow: hidden;
+  background-color: var(--border-color);
+}
+
+.progress-bar-fill {
+  background-color: var(--accent);
+}
+
+/* Choice Grid & Cards for direct selection */
+.form-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+@media (max-width: 520px) {
+  .form-choice-grid {
+    grid-template-columns: 1fr;
+    gap: 0.6rem;
+  }
+}
+
+.form-choice-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: none;
+  font-family: inherit;
+  font-size: 0.88rem;
+  transition: all 0.2s ease;
+  position: relative;
+  border-radius: 0;
+  width: 100%;
+}
+
+.form-choice-card.selected {
+  background: var(--accent-glow);
+  border-color: var(--accent);
+}
+
+.form-choice-card:hover {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+}
+
+
 
