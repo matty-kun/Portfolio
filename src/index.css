@@ -272,6 +272,21 @@ a:hover {
   .two-columns {
     grid-template-columns: 1fr;
   }
+
+  /* Stretch Connect cards edge-to-edge on mobile */
+  .sec-socials .sidebar-grid {
+    margin-left: -2rem !important;
+    margin-right: -2rem !important;
+    gap: 0 !important;
+  }
+  .sec-socials .block-card {
+    border-bottom: 1px solid var(--border-color) !important;
+    padding-left: 1.5rem !important;
+    padding-right: 1.5rem !important;
+  }
+  .sec-socials .block-card:nth-child(odd) {
+    border-right: 1px solid var(--border-color) !important;
+  }
 }
 
 .projects-grid {
@@ -436,22 +451,21 @@ a:hover {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding: 1.25rem 1rem;
-  border: 1px solid var(--border-color);
+  padding: 1rem 0;
+  border: none;
+  border-bottom: 1px solid var(--border-color);
   border-radius: 0;
-  background-color: var(--bg-secondary);
+  background-color: transparent;
   color: var(--text-primary) !important;
   text-decoration: none !important;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   text-align: center;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.01);
 }
 
 .block-card:hover {
-  background-color: var(--bg-primary);
-  transform: translateY(-3px);
-  border-color: var(--text-primary);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.05);
+  background-color: transparent;
+  transform: translateY(-2px);
+  border-bottom-color: var(--text-primary);
 }
 
 .block-card-title {
