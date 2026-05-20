@@ -135,7 +135,9 @@ export const dbService = {
   },
 
   /**
-   * Send a confirmation email to the client via Resend API
+   * Send a confirmation email to the client
+   * Local Dev: Directly calls the Vite-proxied Resend endpoint using local env key
+   * Production: Securely calls the server-side Vercel/Netlify Serverless Function
    */
   async sendConfirmationEmail(params: {
     email: string;
@@ -143,15 +145,20 @@ export const dbService = {
     business: string;
     inquiryId: string;
   }): Promise<boolean> {
-    const RESEND_API_KEY = import.meta.env.VITE_RESEND_API_KEY;
-    if (!RESEND_API_KEY) {
-      console.warn('VITE_RESEND_API_KEY not set — skipping confirmation email');
-      return false;
-    }
-
     const { email, projectType, business, inquiryId } = params;
+    const isDev = import.meta.env.DEV;
 
-    const emailHtml = `<!DOCTYPE html>
+    try {
+      if (isDev) {
+        // --- LOCAL DEVELOPMENT ONLY ---
+        // Stored under import.meta.env.DEV check so it gets completely tree-shaken and stripped from production builds.
+        const RESEND_API_KEY = import.meta.env.VITE_RESEND_API_KEY;
+        if (!RESEND_API_KEY) {
+          console.warn('VITE_RESEND_API_KEY not set in local .env — skipping confirmation email');
+          return false;
+        }
+
+        const emailHtml = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
@@ -228,34 +235,50 @@ export const dbService = {
 </body>
 </html>`;
 
-    try {
-      // In dev, Vite proxies /api/resend → https://api.resend.com to bypass CORS
-      // In production, call Resend directly (API key in env var is acceptable for this use case)
-      const isDev = import.meta.env.DEV;
-      const resendUrl = isDev ? '/api/resend/emails' : 'https://api.resend.com/emails';
+        const res = await fetch('/api/resend/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${RESEND_API_KEY}`,
+            'Content-Type': 'application/json',
+            'User-Agent': 'portfolio/1.0',
+          },
+          body: JSON.stringify({
+            from: 'Matthew Vargas <onboarding@resend.dev>',
+            to: [email],
+            subject: `Brief Received - ${inquiryId} | Matthew Vargas`,
+            html: emailHtml,
+          }),
+        });
 
-      const res = await fetch(resendUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${RESEND_API_KEY}`,
-          'Content-Type': 'application/json',
-          'User-Agent': 'portfolio/1.0',
-        },
-        body: JSON.stringify({
-          from: 'Matthew Vargas <onboarding@resend.dev>',
-          to: [email],
-          subject: `Brief Received - ${inquiryId} | Matthew Vargas`,
-          html: emailHtml,
-        }),
-      });
+        if (!res.ok) {
+          const err = await res.json();
+          console.error('Local Resend API error:', err);
+          return false;
+        }
+        return true;
+      } else {
+        // --- PRODUCTION SECURE ROUTE ---
+        // Secure server-side call where RESEND_API_KEY is retrieved securely from Vercel/Netlify backend env variables.
+        const res = await fetch('/api/send-email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email,
+            projectType,
+            business,
+            inquiryId,
+          }),
+        });
 
-      if (!res.ok) {
-        const err = await res.json();
-        console.error('Resend API error:', err);
-        return false;
+        if (!res.ok) {
+          const err = await res.json();
+          console.error('Production Serverless Email API error:', err);
+          return false;
+        }
+        return true;
       }
-
-      return true;
     } catch (err) {
       console.error('sendConfirmationEmail failed:', err);
       return false;
