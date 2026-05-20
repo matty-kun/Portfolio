@@ -228,8 +228,35 @@ a:hover {
 }
 
 @media (max-width: 768px) {
+  /* Prevent automatic iOS input focus zoom-twitching */
+  .form-input, .form-select, .form-textarea {
+    font-size: 16px !important;
+  }
+
   .grid-layout {
-    grid-template-columns: 1fr;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+  .sidebar-column, .main-column {
+    display: contents !important;
+  }
+  .sec-about {
+    order: 1 !important;
+  }
+  .sec-experience {
+    order: 2 !important;
+  }
+  .sec-skills {
+    order: 3 !important;
+  }
+  .sec-projects {
+    order: 4 !important;
+  }
+  .sec-certs {
+    order: 5 !important;
+  }
+  .sec-socials {
+    order: 6 !important;
   }
   .header {
     flex-direction: column;
@@ -409,21 +436,22 @@ a:hover {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding: 0.8rem 1rem;
-  border: none;
-  border-bottom: 1px solid var(--border-color);
+  padding: 1.25rem 1rem;
+  border: 1px solid var(--border-color);
   border-radius: 0;
-  background-color: transparent;
+  background-color: var(--bg-secondary);
   color: var(--text-primary) !important;
   text-decoration: none !important;
-  transition: all 0.2s ease;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   text-align: center;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.01);
 }
 
 .block-card:hover {
-  background-color: transparent;
-  transform: translateY(-2px);
-  color: var(--text-secondary) !important;
+  background-color: var(--bg-primary);
+  transform: translateY(-3px);
+  border-color: var(--text-primary);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.05);
 }
 
 .block-card-title {
@@ -851,16 +879,14 @@ a:hover {
 /* Modal Overlay */
 .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  inset: 0 !important;
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(4px);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 1000;
+  overflow: hidden;
   animation: modalFadeIn 0.3s ease forwards;
 }
 
@@ -870,6 +896,8 @@ a:hover {
   border: 1px solid var(--border-color);
   width: 90%;
   max-width: 520px;
+  max-height: 90vh;
+  overflow-y: auto;
   padding: 2.25rem;
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.15);
   position: relative;

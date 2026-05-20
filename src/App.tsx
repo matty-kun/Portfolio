@@ -17,6 +17,20 @@ const isExternalUrl = (url?: string | string[]) => {
   return url.startsWith('http') && !url.includes('picsum.photos') && !url.endsWith('.png') && !url.endsWith('.jpg') && !url.endsWith('.jpeg');
 };
 
+const safeStartViewTransition = (callback: () => void) => {
+  if (!document.startViewTransition) {
+    callback();
+    return;
+  }
+  try {
+    const transition = document.startViewTransition(callback);
+    transition.ready.catch(() => {});
+    transition.finished.catch(() => {});
+  } catch (e) {
+    callback();
+  }
+};
+
 const getContactIcon = (method: string, size = '16px') => {
   const cleanMethod = method.toLowerCase();
   
@@ -367,6 +381,17 @@ function App() {
   }, [isAdmin]);
 
   useEffect(() => {
+    if (isProjectModalOpen || isDashboardOpen || isAdminModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isProjectModalOpen, isDashboardOpen, isAdminModalOpen]);
+
+  useEffect(() => {
     const handlePopState = () => {
       if (window.location.pathname.includes('projects')) {
         setCurrentPage('projects');
@@ -382,12 +407,7 @@ function App() {
 
   const navigateTo = (page: 'home' | 'projects' | 'certificates') => {
     const newUrl = page === 'home' ? '/' : page === 'projects' ? '/projects' : '/certificates';
-    if (!document.startViewTransition) {
-      window.history.pushState({}, '', newUrl);
-      setCurrentPage(page);
-      return;
-    }
-    document.startViewTransition(() => {
+    safeStartViewTransition(() => {
       flushSync(() => {
         window.history.pushState({}, '', newUrl);
         setCurrentPage(page);
@@ -441,11 +461,7 @@ function App() {
   };
 
   const selectCertificate = (index: number) => {
-    if (!document.startViewTransition) {
-      setSelectedCertIndex(index);
-      return;
-    }
-    document.startViewTransition(() => {
+    safeStartViewTransition(() => {
       flushSync(() => {
         setSelectedCertIndex(index);
       });
@@ -636,11 +652,7 @@ function App() {
   };
 
   const toggleTheme = () => {
-    if (!document.startViewTransition) {
-      setTheme(prev => prev === 'light' ? 'dark' : 'light');
-      return;
-    }
-    document.startViewTransition(() => {
+    safeStartViewTransition(() => {
       flushSync(() => {
         setTheme(prev => prev === 'light' ? 'dark' : 'light');
       });
@@ -1233,7 +1245,7 @@ function App() {
           <div className="grid-layout">
             {/* Left Column: About, Projects, Extras */}
             <aside className="sidebar-column">
-              <section className="section">
+              <section className="section sec-about">
                 <h3 className="section-title">About Me</h3>
                 <div className="summary-text" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
                   {resumeData.summary.split('\n\n').map((para, i) => (
@@ -1242,7 +1254,7 @@ function App() {
                 </div>
               </section>
 
-          <section className="section">
+          <section className="section sec-projects">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
               <h3 className="section-title" style={{ margin: 0, flex: 1 }}>Projects</h3>
               {resumeData.projects.length > 4 && (
@@ -1324,7 +1336,7 @@ function App() {
           </section>
 
 
-          <section className="section">
+          <section className="section sec-certs">
             <h3 className="section-title">Extras & Certifications</h3>
             <div className="sidebar-grid">
               {resumeData.extras.map((extra, index) => {
@@ -1338,7 +1350,7 @@ function App() {
                         navigateTo('certificates');
                       }}
                       className="block-card"
-                      style={{ border: 'none', borderBottom: '1px solid var(--border-color)', cursor: 'pointer', background: 'transparent', fontFamily: 'inherit' }}
+                      style={{ cursor: 'pointer', fontFamily: 'inherit' }}
                     >
                       <span className="block-card-title">{extra.title}</span>
                       <span className="block-card-sub">View Certificate ↗</span>
@@ -1354,7 +1366,7 @@ function App() {
             </div>
           </section>
 
-          <section className="section">
+          <section className="section sec-socials">
             <h3 className="section-title">Connect</h3>
             {resumeData.socials && resumeData.socials.length > 0 && (
               <div className="sidebar-grid">
@@ -1387,7 +1399,7 @@ function App() {
 
         {/* Right Column: Skills, Education */}
         <div className="main-column">
-          <section className="section">
+          <section className="section sec-skills">
             <h3 className="section-title">Skills</h3>
             {resumeData.skillCategories.map((category, index) => (
               <div key={index} className="skill-category">
@@ -1402,7 +1414,7 @@ function App() {
           </section>
 
           {resumeData.experience && resumeData.experience.length > 0 && (
-            <section className="section">
+            <section className="section sec-experience">
               <h3 className="section-title">Experience</h3>
               <div className="timeline">
                 {resumeData.experience.map((exp, index) => (
@@ -1442,7 +1454,7 @@ function App() {
       </div>
 
       {resumeData.gallery && resumeData.gallery.length > 0 && (
-        <section className="section">
+        <section className="section sec-gallery">
           <h3 className="section-title">Gallery</h3>
           <div className="gallery-wrapper">
             <button className="gallery-arrow left" onClick={() => scrollGallery('left')} aria-label="Scroll Left">
