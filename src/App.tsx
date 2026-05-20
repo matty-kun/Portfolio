@@ -359,11 +359,11 @@ function App() {
 
   useEffect(() => {
     async function loadData() {
-      const list = await dbService.getInquiries();
+      const list = await dbService.getInquiries(isAdmin);
       setSubmittedProjects(list);
     }
     loadData();
-  }, []);
+  }, [isAdmin]);
 
   useEffect(() => {
     const handlePopState = () => {
@@ -630,7 +630,7 @@ function App() {
       setCurrentPage('admin');
       setAdminPasscode('');
     } else {
-      alert(`Incorrect passcode. Hint: YYWW (Year + Week Number, e.g. ${currentWeeklyCode})`);
+      alert("Incorrect passcode. Access denied.");
     }
   };
 
@@ -1896,7 +1896,7 @@ function App() {
                   id="admin-pin" 
                   className="form-input" 
                   maxLength={6}
-                  placeholder="PIN (YYWW)"
+                  placeholder="Enter PIN"
                   value={adminPasscode}
                   onChange={(e) => setAdminPasscode(e.target.value)}
                   required

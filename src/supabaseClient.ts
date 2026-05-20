@@ -23,13 +23,18 @@ export const dbService = {
   /**
    * Fetch all inquiries
    */
-  async getInquiries(): Promise<any[]> {
-    if (isSupabaseConfigured && supabase) {
+  /**
+   * Fetch inquiries
+   * If isAdmin = true, fetches all records from Supabase (if configured)
+   * If isAdmin = false, fetches only the client's own submitted inquiries from LocalStorage
+   */
+  async getInquiries(isAdmin = false): Promise<any[]> {
+    if (isAdmin && isSupabaseConfigured && supabase) {
       const { data, error } = await supabase
         .from('inquiries')
         .select('*')
         .order('created_at', { ascending: false });
-
+ 
       if (!error && data) {
         return data.map(item => ({
           id: item.id,
@@ -47,18 +52,26 @@ export const dbService = {
           })
         }));
       }
-      console.warn("Supabase select error, falling back to LocalStorage:", error);
+      console.warn("Supabase select error for admin, falling back to LocalStorage:", error);
     }
-    
-    // Fallback to LocalStorage
+     
+    // Non-admin (clients) read ONLY their own submissions from LocalStorage for privacy & persistence across refreshes
     const saved = localStorage.getItem('client_project_inquiries');
     return saved ? JSON.parse(saved) : [];
   },
-
+ 
   /**
    * Insert a new inquiry
+   * Stores in Supabase (for the admin) AND in the client's local storage (for persistence on refresh)
    */
   async insertInquiry(inquiry: any): Promise<boolean> {
+    // 1. Always save locally to the client's LocalStorage so their Client Hub persists on refresh
+    const saved = localStorage.getItem('client_project_inquiries');
+    const list = saved ? JSON.parse(saved) : [];
+    list.unshift(inquiry);
+    localStorage.setItem('client_project_inquiries', JSON.stringify(list));
+
+    // 2. If Supabase is configured, upload the inquiry so the Admin can see and manage it
     if (isSupabaseConfigured && supabase) {
       const { error } = await supabase
         .from('inquiries')
@@ -73,64 +86,63 @@ export const dbService = {
           status: inquiry.status || 'Reviewing Brief',
           created_at: new Date().toISOString()
         }]);
-
+ 
       if (!error) return true;
-      console.error("Supabase insert error, saving locally:", error);
+      console.error("Supabase insert error, saved locally:", error);
     }
-
-    // Save to LocalStorage
-    const saved = localStorage.getItem('client_project_inquiries');
-    const list = saved ? JSON.parse(saved) : [];
-    list.unshift(inquiry);
-    localStorage.setItem('client_project_inquiries', JSON.stringify(list));
+ 
     return true;
   },
-
+ 
   /**
-   * Update status of an inquiry
+   * Update status of an inquiry (both in Supabase and locally)
    */
   async updateStatus(id: string, status: string): Promise<boolean> {
-    if (isSupabaseConfigured && supabase) {
-      const { error } = await supabase
-        .from('inquiries')
-        .update({ status })
-        .eq('id', id);
-
-      if (!error) return true;
-      console.error("Supabase update error:", error);
-    }
-
-    // Save locally
+    // 1. Update locally
     const saved = localStorage.getItem('client_project_inquiries');
     if (saved) {
       const list = JSON.parse(saved);
       const updated = list.map((p: any) => p.id === id ? { ...p, status } : p);
       localStorage.setItem('client_project_inquiries', JSON.stringify(updated));
     }
-    return true;
-  },
 
-  /**
-   * Delete an inquiry
-   */
-  async deleteInquiry(id: string): Promise<boolean> {
+    // 2. Update on Supabase if configured
     if (isSupabaseConfigured && supabase) {
       const { error } = await supabase
         .from('inquiries')
-        .delete()
+        .update({ status })
         .eq('id', id);
-
+ 
       if (!error) return true;
-      console.error("Supabase delete error:", error);
+      console.error("Supabase update error:", error);
     }
-
-    // Save locally
+ 
+    return true;
+  },
+ 
+  /**
+   * Delete an inquiry (both in Supabase and locally)
+   */
+  async deleteInquiry(id: string): Promise<boolean> {
+    // 1. Delete locally
     const saved = localStorage.getItem('client_project_inquiries');
     if (saved) {
       const list = JSON.parse(saved);
       const updated = list.filter((p: any) => p.id !== id);
       localStorage.setItem('client_project_inquiries', JSON.stringify(updated));
     }
+
+    // 2. Delete on Supabase if configured
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase
+        .from('inquiries')
+        .delete()
+        .eq('id', id);
+ 
+      if (!error) return true;
+      console.error("Supabase delete error:", error);
+    }
+ 
     return true;
   },
 
