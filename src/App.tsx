@@ -4,7 +4,7 @@ import heroImg from './assets/profile_suit.jpg';
 import type { Resume } from './domain/entities/Resume';
 import { GetResumeUseCase } from './application/usecases/GetResumeUseCase';
 import { LocalResumeRepository } from './infrastructure/repositories/LocalResumeRepository';
-import { dbService, isSupabaseConfigured } from './supabaseClient';
+import { dbService } from './supabaseClient';
 import './index.css';
 
 // Initialize Use Case (Clean Architecture Wiring)
@@ -200,6 +200,7 @@ function App() {
   });
   const [selectedCertIndex, setSelectedCertIndex] = useState<number>(0);
   const [isHoveredProfile, setIsHoveredProfile] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState('/avatar.png');
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [isSubmittedSuccess, setIsSubmittedSuccess] = useState(false);
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
@@ -678,21 +679,16 @@ function App() {
     return (
       <>
       <main className="resume-container admin-fullscreen" style={{ padding: '2rem 1.5rem', minHeight: '100vh', background: 'var(--bg-primary)', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem', marginBottom: '1rem' }}>
-          <div>
-            <h3 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 700, letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-              ⚙️ Matthew Vargas Admin Studio
-            </h3>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-              {isSupabaseConfigured ? '🟢 Connected to Supabase Cloud Database' : '⚡ Local Simulation Mode (LocalStorage)'}
-            </span>
-          </div>
+        <div className="dashboard-header">
+          <h3 className="dashboard-title">
+            ⚙️ Dashboard
+          </h3>
           <button 
             onClick={() => { setIsAdmin(false); setCurrentPage('home'); }} 
-            className="schedule-call-btn"
-            style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', cursor: 'none' }}
+            className="schedule-call-btn dashboard-logout-btn"
+            style={{ cursor: 'none' }}
           >
-            🔒 Log Out & Close
+            🔒 Log Out
           </button>
         </div>
 
@@ -980,7 +976,18 @@ function App() {
       <header className="header">
         <div 
           style={{ width: '135px', height: '135px', flexShrink: 0, position: 'relative', overflow: 'hidden', borderRadius: '0', border: 'none' }}
-          onMouseEnter={() => setIsHoveredProfile(true)}
+          onMouseEnter={() => {
+            setIsHoveredProfile(true);
+            const options = [
+              '/avatar.png',
+              '/pixelated avatar.png'
+            ];
+            let nextOption = options[Math.floor(Math.random() * options.length)];
+            while (nextOption === avatarUrl) {
+              nextOption = options[Math.floor(Math.random() * options.length)];
+            }
+            setAvatarUrl(nextOption);
+          }}
           onMouseLeave={() => setIsHoveredProfile(false)}
         >
           <img 
@@ -1001,7 +1008,7 @@ function App() {
             }} 
           />
           <img 
-            src="/avatar.png" 
+            src={avatarUrl} 
             alt={`${resumeData.name} Avatar`} 
             style={{ 
               width: '100%', 
@@ -1031,7 +1038,7 @@ function App() {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
             {resumeData.location}
           </div>
-          <div style={{ marginTop: '1rem', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <div className="header-buttons-container">
             <a 
               href="https://cal.com/matthewvargas" 
               target="_blank" 
@@ -1546,7 +1553,7 @@ function App() {
                       ]}
                     />
                   </div>
-                  <div style={{ display: 'flex', gap: '1rem' }}>
+                  <div className="form-row">
                     <div className="form-group" style={{ flex: 1 }}>
                       <label htmlFor="system-type">What do you want to make?</label>
                       <CustomSelect
@@ -1579,7 +1586,7 @@ function App() {
                       />
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: '1rem' }}>
+                  <div className="form-row">
                     <div className="form-group" style={{ flex: 1 }}>
                       <label htmlFor="project-budget">Estimated Budget</label>
                       <CustomSelect
